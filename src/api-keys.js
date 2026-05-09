@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { log } from './config.js';
 
-const KEYS_FILE = join(process.cwd(), 'api-keys.json');
+const KEYS_FILE = join(process.env.DATA_DIR || process.cwd(), 'api-keys.json');
 
 // In-memory store
 const apiKeys = [];
