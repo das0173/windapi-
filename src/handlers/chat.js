@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { WindsurfClient } from '../client.js';
-import { getApiKey, acquireAccountByKey, reportError, reportSuccess, markRateLimited, reportInternalError, updateCapability, getAccountList, isAllRateLimited, markExpired } from '../auth.js';
+import { getApiKey, acquireAccountByKey, reportError, reportSuccess, markRateLimited, reportInternalError, updateCapability, getAccountList, isAllRateLimited, setAccountStatus } from '../auth.js';
 import { resolveModelWithOptions, getModelInfo } from '../models.js';
 import { getLsFor, ensureLs } from '../langserver.js';
 import { config, log } from '../config.js';
@@ -812,7 +812,7 @@ function streamResponse(id, created, model, modelKey, messages, cascadeMessages,
             const isAuthFail = /unauthenticated|invalid api key|invalid_grant|permission_denied.*account/i.test(err.message);
             const isRateLimit = /rate limit|rate_limit|too many requests|quota/i.test(err.message);
             const isInternal = /internal error occurred.*error id/i.test(err.message);
-            if (isAuthFail) { markExpired(acct.id); err.isAuthFail = true; }
+            if (isAuthFail) { setAccountStatus(acct.id, 'expired'); err.isAuthFail = true; }
             if (isRateLimit) { markRateLimited(currentApiKey, 5 * 60 * 1000, modelKey); err.isRateLimit = true; }
             if (isInternal) { reportInternalError(currentApiKey); err.isInternal = true; }
             if (err.isModelError && !isRateLimit && !isInternal && !isAuthFail) {
