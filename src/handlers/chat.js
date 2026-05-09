@@ -230,7 +230,7 @@ export async function handleChatCompletions(body, deps = {}) {
   // entitlement and blocklist errors as a clean 403 rather than a 30s
   // queue timeout → pool_exhausted.
   const anyEligible = getAccountList().some(a =>
-    a.status === 'active' && (a.availableModels || []).includes(modelKey)
+    a.status === 'active' && (!a.availableModels || a.availableModels.length === 0 || a.availableModels.includes(modelKey))
   );
   if (!anyEligible) {
     return {
