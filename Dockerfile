@@ -5,16 +5,18 @@ FROM node:20-slim
 
 # Install dependencies for downloading and extracting
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget curl tar xz-utils ca-certificates \
+    wget curl tar xz-utils ca-certificates jq \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Download Windsurf Language Server binary
+# Download Windsurf Language Server binary dynamically
 RUN mkdir -p /opt/windsurf && \
     echo "Downloading Windsurf Language Server..." && \
     cd /tmp && \
-    wget -q "https://windsurf-stable.codeiumdata.com/linux-x64/stable/e54e66a911e8c60a4af30e0a2768b8ba8e5ba77a/Windsurf-linux-x64-1.7.6.tar.gz" -O windsurf.tar.gz && \
+    URL=$(curl -s https://windsurf-stable.codeium.com/api/update/linux-x64/stable/latest | jq -r .url) && \
+    echo "Fetching from $URL" && \
+    wget -q "$URL" -O windsurf.tar.gz && \
     tar -xzf windsurf.tar.gz && \
     find . -name "language_server_linux_x64" -exec cp {} /opt/windsurf/ \; && \
     chmod +x /opt/windsurf/language_server_linux_x64 && \
