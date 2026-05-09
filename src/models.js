@@ -452,11 +452,15 @@ export function getTierModels(tier) {
 /** List all models in OpenAI /v1/models format. */
 export function listModels() {
   const ts = Math.floor(Date.now() / 1000);
+  const isoDate = new Date(Date.now()).toISOString();
   return Object.entries(MODELS).map(([id, info]) => ({
     id: info.name,
     object: 'model',
+    type: 'model',
     created: ts,
+    created_at: isoDate,
     owned_by: info.provider,
+    display_name: info.name,
     _windsurf_id: id,
   }));
 }
