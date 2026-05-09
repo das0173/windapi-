@@ -1,6 +1,7 @@
 // Logger must be imported first to patch log functions before other modules use them
 import './dashboard/logger.js';
 import { initAuth, isAuthenticated } from './auth.js';
+import { initApiKeys } from './api-keys.js';
 import { startLanguageServer, waitForReady, isLanguageServerRunning, stopLanguageServer } from './langserver.js';
 import { startServer } from './server.js';
 import { config, log } from './config.js';
@@ -57,6 +58,9 @@ async function main() {
     log.warn(`Language server binary not found at ${binaryPath}`);
     log.warn('Install it with: download Windsurf Linux tarball and extract language_server_linux_x64');
   }
+
+  // Init API keys
+  initApiKeys();
 
   // Init auth pool
   await initAuth();

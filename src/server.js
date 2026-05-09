@@ -27,6 +27,10 @@ import { handleDashboardApi } from './dashboard/api.js';
 import { config, log } from './config.js';
 import { callerKeyFromRequest } from './caller-key.js';
 import { VERSION } from './version.js';
+import {
+  validateAndTrack, hasAnyKeys, createApiKey, listApiKeys,
+  updateApiKey, deleteApiKey, getKeyUsageStats, initApiKeys,
+} from './api-keys.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -174,12 +178,55 @@ async function route(req, res) {
     }
   }
 
+  // ─── API Key Management endpoints ──────────────────────
+  if (path.startsWith('/api-keys') && method !== 'OPTIONS') {
+    const dashPwd = req.headers['x-dashboard-password'] || '';
+    if (config.dashboardPassword && dashPwd !== config.dashboardPassword) {
+      return json(res, 401, { error: 'Dashboard password required' });
+    }
+    let body = {};
+    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+      try { body = JSON.parse(await readBody(req)); } catch {}
+    }
+    if (path === '/api-keys' && method === 'GET') {
+      return json(res, 200, { keys: listApiKeys() });
+    }
+    if (path === '/api-keys' && method === 'POST') {
+      const result = createApiKey(body);
+      return json(res, 201, { success: true, ...result });
+    }
+    if (path.match(/^\/api-keys\/[^\/]+$/) && method === 'PUT') {
+      const id = path.split('/')[2];
+      const result = updateApiKey(id, body);
+      return result ? json(res, 200, { success: true }) : json(res, 404, { error: 'Key not found' });
+    }
+    if (path.match(/^\/api-keys\/[^\/]+$/) && method === 'DELETE') {
+      const id = path.split('/')[2];
+      const ok = deleteApiKey(id);
+      return json(res, ok ? 200 : 404, { success: ok });
+    }
+    if (path.match(/^\/api-keys\/[^\/]+\/usage$/) && method === 'GET') {
+      const id = path.split('/')[2];
+      const stats = getKeyUsageStats(id);
+      return stats ? json(res, 200, stats) : json(res, 404, { error: 'Key not found' });
+    }
+    return json(res, 404, { error: 'Not found' });
+  }
+
   // ─── API endpoints (require API key) ────────────────────
 
   const callerToken = extractToken(req);
   const callerKey = callerKeyFromRequest(req, callerToken);
-  if (!validateApiKey(callerToken)) {
-    return json(res, 401, { error: { message: 'Invalid API key', type: 'auth_error' } });
+
+  // Multi-key validation with rate limiting
+  if (hasAnyKeys()) {
+    const validation = validateAndTrack(callerToken);
+    if (!validation.valid) {
+      const status = validation.retryAfter ? 429 : 401;
+      const headers = validation.retryAfter ? { 'Retry-After': String(validation.retryAfter) } : {};
+      res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', ...headers });
+      return res.end(JSON.stringify({ error: { message: validation.error, type: status === 429 ? 'rate_limit_error' : 'auth_error' } }));
+    }
   }
 
   if (path === '/v1/models' && method === 'GET') {

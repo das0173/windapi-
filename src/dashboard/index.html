@@ -1225,6 +1225,10 @@ tbody tr:hover td { background: var(--surface-2); }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span>异常监测</span>
       </a>
+      <a href="#apikeys" data-panel="apikeys">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <span>API Keys</span>
+      </a>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">系统</div>
@@ -1590,6 +1594,79 @@ tbody tr:hover td { background: var(--surface-2); }
       </div>
     </div>
   </section>
+  <!-- API Keys Management -->
+  <section class="panel" id="p-apikeys">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">API Keys Management</h1>
+        <div class="page-subtitle">Gere e gerencie chaves de API para seus clientes com rate limiting por janela de tempo</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="showCreateKeyModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Criar Nova Key
+        </button>
+        <button class="btn" onclick="loadApiKeys()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Atualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- Keys Table -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Chaves Ativas</div>
+          <div class="section-desc">Cada chave tem seu próprio limite de requests por janela de tempo</div>
+        </div>
+      </div>
+      <div class="section-body tight">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>API Key</th>
+                <th>Status</th>
+                <th>Rate Limit</th>
+                <th>Uso na Janela</th>
+                <th>Total Requests</th>
+                <th>Último Uso</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="apiKeysTableBody">
+              <tr class="empty-row"><td colspan="8">Nenhuma chave criada. Clique em "Criar Nova Key" para começar.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Info -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Como Usar</div>
+      </div>
+      <div class="section-body">
+        <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+          <div style="background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;">
+            <div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">OpenAI Compatible</div>
+            <code style="display: block; font-size: 11px; word-break: break-all;">curl -H "Authorization: Bearer sk-xxx" \<br>https://SEU-APP.railway.app/v1/chat/completions</code>
+          </div>
+          <div style="background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;">
+            <div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">Claude Code</div>
+            <code style="display: block; font-size: 11px; word-break: break-all;">ANTHROPIC_BASE_URL=https://SEU-APP.railway.app<br>ANTHROPIC_API_KEY=sk-xxx</code>
+          </div>
+          <div style="background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;">
+            <div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">Cursor</div>
+            <code style="display: block; font-size: 11px; word-break: break-all;">Settings → Models → OpenAI API Key: sk-xxx<br>Base URL: https://SEU-APP.railway.app</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Logs -->
   <section class="panel" id="p-logs">
@@ -1897,7 +1974,7 @@ const App = {
       overview: 'loadOverview', 'windsurf-login': 'loadWindsurfLogin',
       accounts: 'loadAccounts', models: 'loadModels', proxy: 'loadProxy',
       logs: 'loadLogs', stats: 'loadStats', bans: 'loadBans',
-      experimental: 'loadExperimental',
+      experimental: 'loadExperimental', apikeys: 'loadApiKeys',
     };
     if (loaders[panel]) this[loaders[panel]]();
   },
@@ -3419,6 +3496,75 @@ const App = {
     this.poll('bans', () => this.loadBans(), 30000);
   },
 
+  // ─── API Keys Management ─────────────────────
+  async loadApiKeys() {
+    try {
+      const resp = await fetch('/api-keys', {
+        headers: { 'X-Dashboard-Password': this.password || '' }
+      });
+      const data = await resp.json();
+      const keys = data.keys || [];
+      const tbody = document.getElementById('apiKeysTableBody');
+      if (keys.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Nenhuma chave criada. Clique em "Criar Nova Key".</td></tr>';
+        return;
+      }
+      tbody.innerHTML = keys.map(k => {
+        const statusClass = k.status === 'active' ? 'active' : (k.expired ? 'error' : 'disabled');
+        const pct = k.rateLimit > 0 ? Math.round((k.windowRequests / k.rateLimit) * 100) : 0;
+        const barColor = pct > 80 ? 'var(--error)' : pct > 50 ? 'var(--warn)' : 'var(--success)';
+        return `<tr>
+          <td><strong>${this.esc(k.label)}</strong><br><code style="font-size:10px;color:var(--text-dim)">${k.id}</code></td>
+          <td>
+            <code style="font-size:11px;cursor:pointer" onclick="App.copyKey('${this.esc(k.fullKey)}')" title="Clique para copiar">${this.esc(k.key)}</code>
+            <button class="btn btn-ghost btn-xs" onclick="App.copyKey('${this.esc(k.fullKey)}')">📋</button>
+          </td>
+          <td><span class="badge ${statusClass}">${k.expired ? 'expired' : k.status}</span></td>
+          <td><strong>${k.rateLimit}</strong> / ${k.windowHours}h</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="flex:1;height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s;"></div>
+              </div>
+              <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${k.windowRequests}/${k.rateLimit}</span>
+            </div>
+          </td>
+          <td>${k.totalRequests.toLocaleString()}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${k.lastUsed ? new Date(k.lastUsed).toLocaleString() : '-'}</td>
+          <td class="nowrap">
+            <div class="btn-group">
+              <button class="btn btn-ghost btn-xs" onclick="App.toggleApiKey('${k.id}','${k.status === 'active' ? 'disabled' : 'active'}')">${k.status === 'active' ? '⏸ Pausar' : '▶ Ativar'}</button>
+              <button class="btn btn-danger btn-xs" onclick="App.deleteApiKey('${k.id}','${this.esc(k.label)}')">🗑</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      this.toast('Erro ao carregar API keys: ' + e.message, 'error');
+    }
+  },
+
+  async toggleApiKey(id, newStatus) {
+    await fetch(`/api-keys/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Dashboard-Password': this.password || '' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    this.toast(`Key ${newStatus === 'active' ? 'ativada' : 'pausada'}`, 'success');
+    this.loadApiKeys();
+  },
+
+  async deleteApiKey(id, label) {
+    const ok = await this.confirm('Deletar API Key', `Tem certeza que deseja deletar a key "${label}"? Esta ação não pode ser desfeita.`, { okText: 'Deletar', danger: true });
+    if (!ok) return;
+    await fetch(`/api-keys/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-Dashboard-Password': this.password || '' }
+    });
+    this.toast('Key deletada com sucesso', 'success');
+    this.loadApiKeys();
+  },
+
   // ─── Helpers ─────────────────────────────────
   fmtDuration(secs) {
     const d = Math.floor(secs / 86400), h = Math.floor((secs % 86400) / 3600), m = Math.floor((secs % 3600) / 60);
@@ -3451,6 +3597,73 @@ const App = {
   },
   esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); },
 };
+
+// Global function for creating API keys (called from HTML onclick)
+function showCreateKeyModal() {
+  const modal = document.querySelector('.modal-overlay');
+  if (!modal) {
+    // Fallback: use prompt-style approach
+    const label = prompt('Nome do cliente (label):');
+    if (!label) return;
+    const limit = parseInt(prompt('Limite de requests por janela:', '100')) || 100;
+    const hours = parseInt(prompt('Janela de tempo (horas):', '24')) || 24;
+    fetch('/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Dashboard-Password': App.password || '' },
+      body: JSON.stringify({ label, rateLimit: limit, windowHours: hours })
+    }).then(r => r.json()).then(d => {
+      if (d.key) {
+        App.toast(`Key criada! ${d.key}`, 'success');
+        navigator.clipboard.writeText(d.key).catch(() => {});
+        App.loadApiKeys();
+      }
+    }).catch(e => App.toast('Erro: ' + e.message, 'error'));
+    return;
+  }
+  // Use the App's modal system
+  App.modal('Criar Nova API Key',
+    `<div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label class="field-label">Nome do Cliente</label>
+        <input class="input" id="newkey-label" placeholder="Ex: Cliente João" autofocus>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <label class="field-label">Limite de Requests</label>
+          <input class="input" id="newkey-limit" type="number" value="100" min="1">
+        </div>
+        <div class="field">
+          <label class="field-label">Janela (horas)</label>
+          <input class="input" id="newkey-window" type="number" value="24" min="1">
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Expiração (opcional)</label>
+        <input class="input" id="newkey-expires" type="date">
+      </div>
+    </div>`,
+    [{
+      text: 'Criar Key', primary: true,
+      action: async () => {
+        const label = document.getElementById('newkey-label').value || 'Key';
+        const rateLimit = parseInt(document.getElementById('newkey-limit').value) || 100;
+        const windowHours = parseInt(document.getElementById('newkey-window').value) || 24;
+        const exp = document.getElementById('newkey-expires').value;
+        const resp = await fetch('/api-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Dashboard-Password': App.password || '' },
+          body: JSON.stringify({ label, rateLimit, windowHours, expiresAt: exp || null })
+        });
+        const d = await resp.json();
+        if (d.key) {
+          App.toast(`Key criada com sucesso! Copiada para clipboard.`, 'success');
+          navigator.clipboard.writeText(d.key).catch(() => {});
+          App.loadApiKeys();
+        }
+      }
+    }]
+  );
+}
 
 window.addEventListener('DOMContentLoaded', () => App.init());
 </script>
