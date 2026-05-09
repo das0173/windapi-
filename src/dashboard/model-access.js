@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const ACCESS_FILE = join(process.cwd(), 'model-access.json');
+const ACCESS_FILE = join(process.env.DATA_DIR || process.cwd(), 'model-access.json');
 
 // mode: 'allowlist' (only listed models allowed) | 'blocklist' (listed models blocked) | 'all' (no restrictions)
 const _config = {
