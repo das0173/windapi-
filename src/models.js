@@ -439,7 +439,7 @@ const FREE_TIER_MODELS = ['gpt-4o-mini', 'gemini-2.5-flash'];
 
 export const MODEL_TIER_ACCESS = {
   get pro() { return Object.keys(MODELS); },
-  free: FREE_TIER_MODELS,
+  get free() { return Object.keys(MODELS); },
   get unknown() { return Object.keys(MODELS); },
   expired: [],
 };
