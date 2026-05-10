@@ -150,6 +150,18 @@ async function waitForAccount(tried, signal, maxWaitMs = QUEUE_MAX_WAIT_MS, mode
   while (!acct) {
     if (signal?.aborted) return null;
     if (Date.now() >= deadline) return null;
+    
+    // If we have already tried every single active, eligible account, 
+    // waiting won't help (unless a new account is injected, which is rare).
+    // Break early to prevent hanging the client for 30s.
+    const allEligible = getAccountList().filter(a => 
+      a.status === 'active' && 
+      (!a.availableModels || a.availableModels.length === 0 || a.availableModels.includes(modelKey))
+    );
+    if (tried.length >= allEligible.length) {
+      return null;
+    }
+
     await new Promise(r => setTimeout(r, QUEUE_RETRY_MS));
     acct = getApiKey(tried, modelKey);
   }
