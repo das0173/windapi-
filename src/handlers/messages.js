@@ -72,13 +72,13 @@ function mapModel(name, effort) {
 
   // If no bare alias matches, we check for haiku.
   // The IDE sends background requests for Haiku, but Free tier blocks Claude 4.5 Haiku.
-  // We MUST intercept Haiku and send it to a fast, free model like Gemini 2.5 Flash,
+  // We MUST intercept Haiku and send it to a fast, free model like gpt-4o-mini,
   // otherwise background IDE tasks will throw Error 12 (UNIMPLEMENTED).
   if (/haiku/i.test(bareName)) {
-    return 'gemini-2.5-flash';
+    return 'gpt-4o-mini';
   }
 
-  return resolved || bareName;
+  return bareName;
 }
 
 function genMsgId() {
