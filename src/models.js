@@ -41,7 +41,7 @@ export const MODELS = {
 
   // ── GPT ─────────────────────────────────────────────────
   'gpt-4o':                         { name: 'gpt-4o',                         provider: 'openai', enumValue: 109, modelUid: 'MODEL_CHAT_GPT_4O_2024_08_06', credit: 1 },
-  'gpt-4o-mini':                    { name: 'gpt-4o-mini',                    provider: 'openai', enumValue: 113, modelUid: 'gpt-4o-mini', credit: 0.5 },
+  'gpt-4o-mini':                    { name: 'gpt-4o-mini',                    provider: 'openai', enumValue: 113, credit: 0.5 },
   'gpt-4.1':                        { name: 'gpt-4.1',                        provider: 'openai', enumValue: 259, modelUid: 'MODEL_CHAT_GPT_4_1_2025_04_14', credit: 1 },
   'gpt-4.1-mini':                   { name: 'gpt-4.1-mini',                   provider: 'openai', enumValue: 260, credit: 0.5 },
   'gpt-4.1-nano':                   { name: 'gpt-4.1-nano',                   provider: 'openai', enumValue: 261, credit: 0.25 },
@@ -110,7 +110,7 @@ export const MODELS = {
   'gpt-oss-120b':                   { name: 'gpt-oss-120b',                   provider: 'openai', enumValue: 0,   modelUid: 'MODEL_GPT_OSS_120B', credit: 0.25 },
 
   // ── O-series ────────────────────────────────────────────
-  'o3-mini':                        { name: 'o3-mini',                        provider: 'openai', enumValue: 207, modelUid: 'o3-mini', credit: 0.5 },
+  'o3-mini':                        { name: 'o3-mini',                        provider: 'openai', enumValue: 207, credit: 0.5 },
   'o3':                             { name: 'o3',                             provider: 'openai', enumValue: 218, modelUid: 'MODEL_CHAT_O3', credit: 1 },
   'o3-high':                        { name: 'o3-high',                        provider: 'openai', enumValue: 0,   modelUid: 'MODEL_CHAT_O3_HIGH', credit: 1 },
   'o3-pro':                         { name: 'o3-pro',                         provider: 'openai', enumValue: 294, credit: 4 },
@@ -449,7 +449,7 @@ export const MODEL_TIER_ACCESS = {
   get pro() { return Object.keys(MODELS); },
   get free() { return FREE_TIER_MODELS; },
   get unknown() { return Object.keys(MODELS); },
-  expired: [],
+  get expired() { return FREE_TIER_MODELS; },
 };
 
 /** Models a given tier is entitled to. */
