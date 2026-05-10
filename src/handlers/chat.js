@@ -198,6 +198,14 @@ export async function handleChatCompletions(body, deps = {}) {
   // role:tool / assistant.tool_calls messages without injecting a user-level
   // preamble (that's now handled at the proto layer).
   const toolPreamble = emulateTools ? buildToolPreambleForProto(tools || [], tool_choice) : '';
+  
+  // If not using Cascade, we MUST strip tools because the legacy RawGetChatMessageRequest
+  // protobuf does not support tools and will crash with 'invalid wire-format data'.
+  if (!useCascade && hasTools) {
+    delete body.tools;
+    delete body.tool_choice;
+  }
+
   let cascadeMessages = emulateTools
     ? normalizeMessagesForCascade(messages, [])
     : [...messages];
