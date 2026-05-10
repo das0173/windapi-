@@ -41,7 +41,7 @@ export const MODELS = {
 
   // ── GPT ─────────────────────────────────────────────────
   'gpt-4o':                         { name: 'gpt-4o',                         provider: 'openai', enumValue: 109, modelUid: 'MODEL_CHAT_GPT_4O_2024_08_06', credit: 1 },
-  'gpt-4o-mini':                    { name: 'gpt-4o-mini',                    provider: 'openai', enumValue: 113, credit: 0.5 },
+  'gpt-4o-mini':                    { name: 'gpt-4o-mini',                    provider: 'openai', enumValue: 113, modelUid: 'gpt-4o-mini', credit: 0.5 },
   'gpt-4.1':                        { name: 'gpt-4.1',                        provider: 'openai', enumValue: 259, modelUid: 'MODEL_CHAT_GPT_4_1_2025_04_14', credit: 1 },
   'gpt-4.1-mini':                   { name: 'gpt-4.1-mini',                   provider: 'openai', enumValue: 260, credit: 0.5 },
   'gpt-4.1-nano':                   { name: 'gpt-4.1-nano',                   provider: 'openai', enumValue: 261, credit: 0.25 },
@@ -110,7 +110,7 @@ export const MODELS = {
   'gpt-oss-120b':                   { name: 'gpt-oss-120b',                   provider: 'openai', enumValue: 0,   modelUid: 'MODEL_GPT_OSS_120B', credit: 0.25 },
 
   // ── O-series ────────────────────────────────────────────
-  'o3-mini':                        { name: 'o3-mini',                        provider: 'openai', enumValue: 207, credit: 0.5 },
+  'o3-mini':                        { name: 'o3-mini',                        provider: 'openai', enumValue: 207, modelUid: 'o3-mini', credit: 0.5 },
   'o3':                             { name: 'o3',                             provider: 'openai', enumValue: 218, modelUid: 'MODEL_CHAT_O3', credit: 1 },
   'o3-high':                        { name: 'o3-high',                        provider: 'openai', enumValue: 0,   modelUid: 'MODEL_CHAT_O3_HIGH', credit: 1 },
   'o3-pro':                         { name: 'o3-pro',                         provider: 'openai', enumValue: 294, credit: 4 },
@@ -293,7 +293,17 @@ for (const [k, v] of Object.entries(CURSOR_ALIASES)) _lookup.set(k, v);
 /** Resolve user model name → internal model key. */
 export function resolveModel(name) {
   if (!name) return null;
-  return _lookup.get(name) || _lookup.get(name.toLowerCase()) || name;
+  const resolved = _lookup.get(name) || _lookup.get(name.toLowerCase()) || name;
+  
+  // The IDE sends background requests for Haiku (e.g. for generating titles, 
+  // autocomplete, indexing). Free tier blocks Claude 4.5 Haiku, which causes 
+  // Error 12 (UNIMPLEMENTED) and breaks the IDE. We MUST intercept Haiku globally
+  // and send it to a fast, free model like Gemini 2.5 Flash.
+  if (typeof resolved === 'string' && /haiku/i.test(resolved)) {
+    return 'gemini-2.5-flash';
+  }
+  
+  return resolved;
 }
 
 const EFFORT_ALIASES = {
@@ -358,20 +368,6 @@ export function resolveModelWithOptions(name, options = {}) {
   if (!model) return model;
   if (!effort && !fast) return model;
 
-  if (/^claude-opus-4[.-]7/.test(model) || /^claude-opus-4-7/.test(String(raw || ''))) {
-    return resolveVariant('claude-opus-4.7', effort || 'medium', false);
-  }
-  if (/^claude-sonnet-4[.-]6/.test(model) || /^claude-sonnet-4-6/.test(String(raw || ''))) {
-    if (effort && ['high', 'xhigh', 'max'].includes(effort)) {
-      if (/-1m$/.test(model)) return 'claude-sonnet-4.6-thinking-1m';
-      return 'claude-sonnet-4.6-thinking';
-    }
-    return model;
-  }
-  if (/^claude-opus-4[.-]6/.test(model) || /^claude-opus-4-6/.test(String(raw || ''))) {
-    if (effort && ['high', 'xhigh', 'max'].includes(effort)) return 'claude-opus-4.6-thinking';
-    return model;
-  }
   if (/^gpt-5\.2-codex/.test(model) || /^gpt-5-2-codex/.test(String(raw || ''))) {
     return resolveVariant('gpt-5.2-codex', effort || 'medium', fast);
   }
@@ -435,11 +431,23 @@ export function getModelKeysByEnum(enumValue) {
 // ─── Tier access ───────────────────────────────────────────
 
 const ALL_MODEL_KEYS = Object.keys(MODELS);
-const FREE_TIER_MODELS = ['gpt-4o-mini', 'gemini-2.5-flash'];
+const FREE_TIER_MODELS = [
+  'gpt-4o-mini',
+  'gpt-4o',
+  'claude-3.5-sonnet',
+  'claude-3.7-sonnet',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'deepseek-v3',
+  'deepseek-r1',
+  'o3-mini',
+  'grok-3',
+  'grok-3-mini'
+];
 
 export const MODEL_TIER_ACCESS = {
   get pro() { return Object.keys(MODELS); },
-  get free() { return Object.keys(MODELS); },
+  get free() { return FREE_TIER_MODELS; },
   get unknown() { return Object.keys(MODELS); },
   expired: [],
 };

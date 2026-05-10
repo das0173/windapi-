@@ -63,11 +63,6 @@ function mapModel(name, effort) {
   // Exact catalog match first (post-suffix-strip)
   const resolved = resolveModel(bareName);
   if (resolved && resolved !== bareName) {
-    // If caller asked for 1M but catalog entry isn't a -1m variant, try to upgrade
-    if (wants1m && !/-1m$/.test(resolved)) {
-      if (/^claude-sonnet-4\.6-thinking$/.test(resolved)) return 'claude-sonnet-4.6-thinking-1m';
-      if (/^claude-sonnet-4\.6$/.test(resolved))          return 'claude-sonnet-4.6-1m';
-    }
     return resolved;
   }
 
@@ -75,35 +70,14 @@ function mapModel(name, effort) {
   const lower = bareName.toLowerCase();
   if (ALIAS_MAP[lower]) return ALIAS_MAP[lower];
 
-  // Claude Opus 4.7 family — redirected to opus 4.6 thinking per user config.
-  if (/claude.*opus.*4[-_.]7/i.test(bareName))         return 'claude-opus-4.6-thinking';
-
-  // Older Opus families — effort heuristic (high/xhigh/max → thinking variant)
-  if (/claude.*opus.*4[-_.]6/i.test(bareName)) {
-    return (eff && ['high','xhigh','max'].includes(eff)) ? 'claude-opus-4.6-thinking' : 'claude-opus-4.6';
+  // If no bare alias matches, we check for haiku.
+  // The IDE sends background requests for Haiku, but Free tier blocks Claude 4.5 Haiku.
+  // We MUST intercept Haiku and send it to a fast, free model like Gemini 2.5 Flash,
+  // otherwise background IDE tasks will throw Error 12 (UNIMPLEMENTED).
+  if (/haiku/i.test(bareName)) {
+    return 'gemini-2.5-flash';
   }
 
-  // Fallback bare opus → opus 4.6 thinking
-  if (/claude.*opus/i.test(bareName)) return 'claude-opus-4.6-thinking';
-
-  // Sonnet — 4.6 family. Honour [1m] to pick the 1M-context variant.
-  const sonnetThinking = /claude.*sonnet.*thinking/i.test(bareName);
-  const sonnet46       = /claude.*sonnet.*4[-_.]6/i.test(bareName);
-  const sonnetGeneric  = /claude.*sonnet/i.test(bareName);
-  if (sonnetThinking) return wants1m ? 'claude-sonnet-4.6-thinking-1m' : 'claude-sonnet-4.6-thinking';
-  if (sonnet46) {
-    const thinking = (eff && ['high','xhigh','max'].includes(eff));
-    if (wants1m && thinking) return 'claude-sonnet-4.6-thinking-1m';
-    if (wants1m)             return 'claude-sonnet-4.6-1m';
-    if (thinking)            return 'claude-sonnet-4.6-thinking';
-    return 'claude-sonnet-4.6';
-  }
-  if (sonnetGeneric) return wants1m ? 'claude-sonnet-4.6-1m' : 'claude-sonnet-4.6';
-
-  // Haiku
-  if (/claude.*haiku/i.test(bareName)) return 'claude-4.5-haiku';
-
-  // Unknown — let resolveModel's fallthrough try, chat.js will 403 if really bogus
   return resolved || bareName;
 }
 
